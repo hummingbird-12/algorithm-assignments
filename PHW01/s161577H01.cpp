@@ -16,14 +16,17 @@ void Read_Graph_adj_list(int Vnum, vertex* V, int Enum, edge* E) {
     // V[].flag과 E[].flag은 반드시 false로 설정해야 한다.
 
     // ***이 함수를 작성한다
+
     int u, v, c;
     SLL* p;
 
+    // Initialize vertex array V[]
     for (int i = 0; i < Vnum; i++) {
         V[i].name = i;
         V[i].flag = false;
     }
 
+    // Store the given graph as adjacent list
     for (int i = 0; i < Enum; i++) {
         scanf_s("%d%d%d", &u, &v, &c);
 
@@ -46,12 +49,13 @@ void Read_Graph_adj_list(int Vnum, vertex* V, int Enum, edge* E) {
 void Free_Graph_adj_list(int Vnum, vertex* V) {
     // V 배열의 adjacency list의 원소를 pop()을 사용하여
     // 모두  pool로 되돌려 준다
-    int k;
 
     // ***이 함수를 작성한다
-    for (k = 0; k < Vnum; k++) {
-        while (!V[k].S.empty()) {
-            pool.freeSLL(V[k].S.pop());
+
+    for (int i = 0; i < Vnum; i++) {
+        // Move all elements in V[i].S into the pool
+        while (!V[i].S.empty()) {
+            pool.freeSLL(V[i].S.pop());
         }
     }
 }
@@ -73,19 +77,22 @@ int BFS_Tree_adj_list(
     // -- BFS를 위한 queue가 필요하면 STL의 queue를 사용해도 좋다
 
     // ***이 함수를 작성한다
+
     std::queue<int> q;
     int totalCost = 0;
 
+    // Initialize BFS state
     q.push(src);
     V[src].flag = true;
 
     while (!q.empty()) {
-        const int& current = q.front();
+        const int& current = q.front(); // Current vertex in BFS iteration
 
         for (SLL* p = V[current].S.top(); p != NULL; p = p->p) {
-            edge& e = E[p->i];
-            const int& next = (e.vf == current ? e.vr : e.vf);
+            edge& e = E[p->i]; // An edge incident to `current`
+            const int& next = (e.vf == current ? e.vr : e.vf); // Vertex adjacent to `current` by `e`
 
+            // Check if `next` is not yet visited
             if (!V[next].flag) {
                 V[next].flag = true;
                 q.push(next);
@@ -117,6 +124,7 @@ SLL* sllStack2::pop(void) {
     // remove and return p at the top of ST
 
     // ***이 함수를 작성한다
+
     SLL* p = ST;
     ST = ST->p;
     return p;
@@ -140,6 +148,8 @@ SLL* SLList2::allocSLL(void) {		// allocate an SLL element
     SLL* p;
 
     // ***이 함수를 작성한다
+
+    // Pool is empty
     if (SLL_pool == NULL) {
         p = (SLL*)malloc(sizeof(SLL));
         if (p == NULL) {
@@ -150,6 +160,7 @@ SLL* SLList2::allocSLL(void) {		// allocate an SLL element
             p->i = NONE;
         }
     }
+    // Obtain element from pool
     else {
         p = SLL_pool;
         SLL_pool = SLL_pool->p;
@@ -167,6 +178,7 @@ void SLList2::freeSLL(SLL* p) {		// free *p (move it to SLL_pool
     }
 
     // ***이 함수를 작성한다
+
     p->i = NONE;
     p->p = SLL_pool;
     SLL_pool = p;
@@ -177,6 +189,7 @@ void SLList2::freeSLL_pool(void) {	// clear SLL_pool
     SLL* p = SLL_pool;
 
     // ***이 함수를 작성한다
+
     while (p != NULL) {
         SLL_pool = p->p;
         free(p);
