@@ -6,14 +6,17 @@ void Read_Graph_adj_array(int Vnum, vertex V[], int Enum, edge E[]) {
     // V[].flag과 E[].flag은 반드시 false로 설정해야 한다.
 
     // ***이 함수를 작성한다
+
     int u, v, c;
 
+    // Initialize vertex array V[]
     for (int i = 0; i < Vnum; i++) {
         V[i].name = i;
         V[i].f_hd = V[i].r_hd = NONE;
         V[i].flag = false;
     }
 
+    // Store the given graph as adjacent list in array
     for (int i = 0; i < Enum; i++) {
         scanf_s("%d%d%d", &u, &v, &c);
 
@@ -44,25 +47,32 @@ int DFS_Tree_adj_array(
     // recursive 함수로 작성해도 무방하다.
 
     // ***이 함수를 작성한다***
+
     int cost = 0;
     int e;
 
     V[src].flag = true;
 
+    // DFS through front edges
     e = V[src].f_hd;
     while (e != NONE) {
-        edge& f_edge = E[e];
+        edge& f_edge = E[e]; // Edge in front head
+
         if (!V[f_edge.vr].flag) {
+            // Include edge in DFS spanning tree and accumulate cost
             f_edge.flag = true;
             cost += f_edge.cost + DFS_Tree_adj_array(f_edge.vr, Vnum, V, Enum, E);
         }
         e = f_edge.fp;
     }
 
+    // DFS through rear edges
     e = V[src].r_hd;
     while (e != NONE) {
-        edge& r_edge = E[e];
+        edge& r_edge = E[e]; // Edge in rear head
+
         if (!V[r_edge.vf].flag) {
+            // Include edge in DFS spanning tree and accumulate cost
             r_edge.flag = true;
             cost += r_edge.cost + DFS_Tree_adj_array(r_edge.vf, Vnum, V, Enum, E);
         }
