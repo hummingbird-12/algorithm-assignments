@@ -29,7 +29,7 @@ int main() {
     Edge* E;
     int* path;	// Euler cycle or path
     int pathN;  // path length
-    int  flag;	// 0: none, 1: cycle, 2:path
+    int  flag;	// 0: cycle, 1: path, 2: none
     clock_t start_time, finish_time;
 
     scanf("%d", &T);	// read # of tests
@@ -81,6 +81,74 @@ int* Find_Euler(Vertex* V, Edge* E, int VN, int EN, int* flag, int* pathN) {
 
     // *** 이 부분을 작성하세요
 
+    // Initialize state
+    *pathN = 0;
+    int odd_degree = 0;
+
+    // Count odd degree vertices
+    for (int v = 0; v < VN; v++) {
+        if (V[v].degree % 2 == 1) {
+            odd_degree++;
+
+            if (odd_degree == 1) {
+                // Set as Euler path problem and push odd degree vertex to stack
+                *flag = 1;
+                ST.push(v);
+            }
+            else if (odd_degree > 2) {
+                // Not Eulerian if there are more than 2 odd degree vertices
+                *flag = 2;
+                return NULL;
+            }
+        }
+    }
+
+    if (odd_degree == 1) {
+        // Not Eulerian if there is only 1 odd degree vertex
+        *flag = 2;
+        return NULL;
+    }
+    else if (odd_degree == 0) {
+        // Set as Euler cycle problem and push vertex 0 to stack
+        *flag = 0;
+        ST.push(0);
+    }
+
+    // Allocate memory for path array
+    *pathN = EN + 1;
+    path = new int[*pathN];
+    if (path == NULL) {
+        Error_Exit("Memory allocation error (Find_Euler).");
+    }
+
+    int i = 0;
+    while (!ST.empty()) {
+        const int& v = ST.top();
+        if (V[v].degree == 0) {
+            // Vertex has no more incident edge
+            path[i++] = v;
+            ST.pop();
+        }
+        else {
+            // Vertex has an unremoved incident edge
+            DBL* edge = V[v].S.top();
+            DBL* twin = edge->twin;
+            const int& w = edge->d;
+
+            // Push next vertex to stack
+            ST.push(w);
+
+            // Remove edge from adjacent list
+            V[v].S.pop();
+            V[v].degree--;
+            V[w].S.remove(twin);
+            V[w].degree--;
+
+            pool.freeDBL(edge);
+            pool.freeDBL(twin);
+        }
+    }
+
     return path;
 }
 
@@ -88,6 +156,13 @@ void deallocGraph(Vertex* V, Edge* E, int VN) {
     DBL* p;
 
     // *** 여기에 adj list를 삭제하는 routine을 작성하세요
+
+    for (int v = 0; v < VN; v++) {
+        while (!V[v].S.empty()) {
+            p = V[v].S.pop();
+            pool.freeDBL(p);
+        }
+    }
 
     delete[] V;
     delete[] E;
@@ -116,10 +191,27 @@ void graphGeneration(Vertex** V, Edge** E, int* VN, int* EN) {
 
 void adjListGenerate(Vertex* V, Edge* E, int VN, int EN) {
     // Construct adjacent list in V array
-    int v1, v2;
     DBL* adjE1, * adjE2;
 
     // *** 이 부분을 작성하세요
+
+    for (int e = 0; e < EN; e++) {
+        const int& v1 = E[e].v1;
+        const int& v2 = E[e].v2;
+
+        adjE1 = pool.allocDBL();
+        adjE2 = pool.allocDBL();
+
+        // Initialize
+        adjE1->d = v2;
+        adjE1->twin = adjE2;
+        adjE2->d = v1;
+        adjE2->twin = adjE1;
+
+        // Add to adjacent list of both vertices
+        V[v1].S.push(adjE1);
+        V[v2].S.push(adjE2);
+    }
 }
 
 void Error_Exit(const char* s) {
@@ -132,6 +224,22 @@ DBL* DBList::allocDBL(void) {		// allocate a DBL element
 
     // *** 이 부분을 작성하세요
 
+    if (DBL_pool == NULL) {
+        // Pool is empty, allocate new system memory
+        p = new DBL;
+        if (p == NULL) {
+            Error_Exit("Memory allocation error (Alloc_DBL).");
+        }
+        p->d = NONE;
+        UsedMemoryForDBLs += sizeof(DBL);
+    }
+    else {
+        // Obtain element from pool
+        p = DBL_pool;
+        DBL_pool = p->rp;
+    }
+
+    p->lp = p->rp = p->twin = NULL;
     ++DBL_cnt;
 
     return(p);
@@ -146,6 +254,10 @@ void DBList::freeDBL(DBL* p) {
 
     // *** 이 부분을 작성하세요
 
+    // Reorganize pointer links
+    p->d = NONE;
+    p->rp = DBL_pool;
+    DBL_pool = p;
     --DBL_cnt;		// reduce # of active DBL elements by one
 }
 
@@ -165,18 +277,41 @@ void DBList::freeDBL_pool(void) {
 
 void dblStack::push(DBL* p) {
     // *** 이 부분을 작성하세요
+
+    // p becomes new top of stack
+    p->lp = NULL;
+    p->rp = ST;
+    if (ST != NULL) {
+        ST->lp = p;
+    }
+    ST = p;
 }
 
 DBL* dblStack::pop(void) {	// remove and return p in front of Q
-    DBL* p;
-
     // *** 이 부분을 작성하세요
+
+    DBL* p = ST;
+
+    ST = ST->rp;
+    if (ST != NULL) {
+        ST->lp = NULL;
+    }
 
     return p;
 }
 
 void dblStack::remove(DBL* p) {	// delete p from ST
     // *** 이 부분을 작성하세요
+
+    if (p == ST) {
+        pop();
+    }
+    else {
+        (p->lp)->rp = p->rp;
+        if (p->rp != NULL) {
+            (p->rp)->lp = p->lp;
+        }
+    }
 }
 
 DBL* dblStack::top(void) {
