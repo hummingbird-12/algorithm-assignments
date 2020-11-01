@@ -1,5 +1,5 @@
 #include <algorithm>
-#include <climits>
+#include <cfloat>
 #include <cmath>
 #include <utility>
 
