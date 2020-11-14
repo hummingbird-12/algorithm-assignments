@@ -41,25 +41,29 @@ void Edit_Distance(
     int op_cnt = 0;
     i = SN;
     j = TN;
-    while (i != 0 || j != 0) {
-        const int& ed = Table[i][j]; // Current edit distance
+    while (i > 0 && j > 0) {
+        const int& ed = Table[i][j];                    // Current edit distance cost
+        const int ins_ed = Table[i][j - 1] + ins_cost;  // Insertion from previous stage
+        const int del_ed = Table[i - 1][j] + del_cost;  // Deletion from previous stage
         op_cnt++;
 
-        // No operation
-        if (SS[i - 1] == TS[j - 1]) {
+        if (ed == ins_ed) {
+            // When ins and del are both possible traces, prefer del only if `ins_cost` > `del_cost`
+            if (ins_ed == del_ed && ins_cost > del_cost) {
+                // Deletion
+                i--;
+            }
+            else {
+                // Insertion
+                j--;
+            }
+        }
+        else if (ed == del_ed) {
+            // Deletion
             i--;
-            j--;
         }
-        // Insertion
-        else if (ed == Table[i][j - 1] + ins_cost) {
-            j--;
-        }
-        // Deletion
-        else if (ed == Table[i - 1][j] + del_cost) {
-            i--;
-        }
-        // Substitution
         else {
+            // Substitution / No operation
             i--;
             j--;
         }
@@ -80,35 +84,41 @@ void Edit_Distance(
     i = SN;
     j = TN;
     int index = RLEN - 2; // Index for the result strings
-    while (i != 0 || j != 0) {
-        const int& ed = Table[i][j];    // Current edit distance
+    while (i > 0 && j > 0) {
+        const int& ed = Table[i][j];                    // Current edit distance cost
+        const int ins_ed = Table[i][j - 1] + ins_cost;  // Insertion from previous stage
+        const int del_ed = Table[i - 1][j] + del_cost;  // Deletion from previous stage
+
         // Reference to current elements of the result strings
         char& op = (*OP)[index];
         char& sr = (*SR)[index];
         char& tr = (*TR)[index];
         index--;
 
-        // No operation
-        if (SS[i - 1] == TS[j - 1]) {
-            op = '.';
-            sr = SS[--i];
-            tr = TS[--j];
+        if (ed == ins_ed) {
+            // When ins and del are both possible traces, prefer del only if `ins_cost` > `del_cost`
+            if (ins_ed == del_ed && ins_cost > del_cost) {
+                // Deletion
+                op = 'd';
+                sr = SS[--i];
+                tr = '*';
+            }
+            else {
+                // Insertion
+                op = 'i';
+                sr = '*';
+                tr = TS[--j];
+            }
         }
-        // Insertion
-        else if (ed == Table[i][j - 1] + ins_cost) {
-            op = 'i';
-            sr = '*';
-            tr = TS[--j];
-        }
-        // Deletion
-        else if (ed == Table[i - 1][j] + del_cost) {
+        else if (ed == del_ed) {
+            // Deletion
             op = 'd';
             sr = SS[--i];
             tr = '*';
         }
-        // Substitution
         else {
-            op = 's';
+            // Substitution / No operation
+            op = (SS[i - 1] == TS[j - 1] ? '.' : 's');
             sr = SS[--i];
             tr = TS[--j];
         }
