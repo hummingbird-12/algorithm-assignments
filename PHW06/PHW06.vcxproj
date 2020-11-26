@@ -141,6 +141,9 @@
   <ItemGroup>
     <ClCompile Include="s161577H06.cpp" />
   </ItemGroup>
+  <ItemGroup>
+    <Object Include="SPT_test_D.obj" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
