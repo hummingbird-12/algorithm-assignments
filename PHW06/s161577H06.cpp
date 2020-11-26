@@ -21,9 +21,93 @@ typedef struct elm_vertex {
     bool inS;			// true if SP length found(true when move from V-S to S)
 } vertex;
 
-static void minheap_insert(vertex* V, int* heap, int& last, const int x);
-static int minheap_delete(vertex* V, int* heap, int& last);
-static void minheap_adjust(vertex* V, int* heap, const int& last, int idx);
+class MinHeap {
+    int* heap;      // Array for min-heap implementation
+    int size;       // Size of min-heap
+    vertex* varr;   // Array of vertices
+
+public:
+    /*
+     * Initialize by providing an allocated memory
+     * and the array of vertices.
+     */
+    MinHeap(int* arr, vertex* V) {
+        heap = arr;
+        size = 0;
+        varr = V;
+    }
+
+    /*
+     * Adds `x` into min-heap and adjusts accordingly.
+     */
+    void push(const int x) {
+        heap[++size] = x;
+        adjust_up(size);
+    }
+
+    /*
+     * Returns the root of min-heap and adjusts accordingly.
+     */
+    int pop() {
+        int ret = heap[1];
+        heap[1] = heap[size];
+        heap[size--] = NONE;
+        adjust_down(1);
+        return ret;
+    }
+
+    /*
+     * Adjusts the min-heap by moving upwards
+     * the element at index `i`.
+     */
+    void adjust_up(int i) {
+        // Compare with parent
+        while (i > 1 && varr[heap[i]].distance < varr[heap[i / 2]].distance) {
+            std::swap(heap[i], heap[i / 2]);
+            varr[heap[i]].heap_idx = i;
+            i /= 2;
+        }
+        varr[heap[i]].heap_idx = i;
+    }
+
+    /*
+     * Adjusts the min-heap by moving downwards
+     * the element at index `i`.
+     */
+    void adjust_down(int i) {
+        int next;
+        while (true) {
+            next = i;
+            // Compare with left child
+            if (i * 2 <= size && varr[heap[i]].distance > varr[heap[i * 2]].distance) {
+                next = i * 2;
+            }
+            // Compare with right child
+            if (i * 2 + 1 <= size && varr[heap[next]].distance > varr[heap[i * 2 + 1]].distance) {
+                next = i * 2 + 1;
+            }
+
+            if (next != i) {
+                // Move downwards
+                std::swap(heap[i], heap[next]);
+                varr[heap[i]].heap_idx = i;
+                i = next;
+            }
+            else {
+                // End movement
+                break;
+            }
+        }
+        varr[heap[i]].heap_idx = i;
+    }
+};
+
+/*
+ * Marks edges that are part of the SPT while
+ * back-tracing from the result of Dijkstra's algorithm.
+ * Returns the SPT's total cost.
+ */
+static int back_trace(const int src, const int Vnum, const vertex* V, edge* E);
 
 int SPT_Dijkstra(
     int src,	// source vertex index
@@ -43,96 +127,124 @@ int SPT_Dijkstra(
     // 3. return the sum of edge costs in the shortest path spanning tree.
     //    should be small as possible (think a way to make it small)
 ) {
-    int treeCost = 0;
     // *** 이 함수를 작성하자 ***
     // 반드시 min-heap을 사용하여 O((n+m)logn) 알고리즘을 구현해야 한다(아니면 trivial한 프로그램임)
     // heap 연산 등 필요한 함수는 자유롭게 작성하여 추가한다.
     // 그러나 global 변수, dynamic array 등은 추가로 사용하지 않는다(실제로 필요 없다)
-    int e, heap_last = 0;
+    int e;
+    int treeCost = 0;
 
+    // Initialize `src`
     V[src].distance = 0;
     V[src].inS = true;
 
-    // Iterate through front edges
+    // Initialize distances to vertices adjacent to `src`
     e = V[src].f_hd;
     while (e != NONE) {
+        // Iterate through front edges
         V[E[e].vr].distance = E[e].cost;
         e = E[e].fp;
     }
-
-    // Iterate through rear edges
     e = V[src].r_hd;
     while (e != NONE) {
+        // Iterate through rear edges
         V[E[e].vf].distance = E[e].cost;
         e = E[e].rp;
     }
 
+    // Construct min-heap
+    MinHeap MH = MinHeap(minHeap, V);
     for (int i = 0; i < Vnum; i++) {
         if (!V[i].inS) {
-            minheap_insert(V, minHeap, heap_last, i);
+            MH.push(i);
         }
     }
 
     for (int i = 0; i < Vnum - 2; i++) {
-        const int idx = minheap_delete(V, minHeap, heap_last);
-        V[idx].inS = true;
+        const int u = MH.pop(); // Get the closest vertex and remove it from min-heap
+        V[u].inS = true; // Mark vertex as part of S
 
-        // Iterate through front edges
-        e = V[idx].f_hd;
+        // Iterate through all vertices adjacent to `u`
+        e = V[u].f_hd;
         while (e != NONE) {
-            if (!V[E[e].vr].inS && V[idx].distance + E[e].cost < V[E[e].vr].distance) {
-                V[E[e].vr].distance = V[idx].distance + E[e].cost;
-                minheap_adjust(V, minHeap, heap_last, V[E[e].vr].heap_idx);
+            // Iterate through front edges (u, w)
+            const int& w = E[e].vr;
+            if (!V[w].inS && V[u].distance + E[e].cost < V[w].distance) {
+                // Update distance and adjust min-heap
+                V[w].distance = V[u].distance + E[e].cost;
+                MH.adjust_up(V[w].heap_idx);
             }
             e = E[e].fp;
         }
-
-        // Iterate through rear edges
-        e = V[idx].r_hd;
+        e = V[u].r_hd;
         while (e != NONE) {
-            if (!V[E[e].vf].inS && V[idx].distance + E[e].cost < V[E[e].vf].distance) {
-                V[E[e].vf].distance = V[idx].distance + E[e].cost;
-                minheap_adjust(V, minHeap, heap_last, V[E[e].vf].heap_idx);
+            // Iterate through rear edges (u, w)
+            const int& w = E[e].vf;
+            if (!V[w].inS && V[u].distance + E[e].cost < V[w].distance) {
+                // Update distance and adjust min-heap
+                V[w].distance = V[u].distance + E[e].cost;
+                MH.adjust_up(V[w].heap_idx);
             }
             e = E[e].rp;
         }
     }
-    V[minheap_delete(V, minHeap, heap_last)].inS = true; // Mark last vertex
+    V[MH.pop()].inS = true; // Mark last vertex as part of S
 
-    for (int i = 0; i < Vnum; i++) {
-        if (i == src) {
+    return (treeCost = back_trace(src, Vnum, V, E));
+}
+
+/*
+ * Marks edges that are part of the SPT while
+ * back-tracing from the result of Dijkstra's algorithm.
+ * Returns the SPT's total cost.
+ */
+static int back_trace(const int src, const int Vnum, const vertex* V, edge* E) {
+    int e, cost = 0;
+    int max_dist, max_idx;
+
+    // Iterate through all vertices
+    for (int u = 0; u < Vnum; u++) {
+        if (u == src) {
             continue;
         }
-        int max_cost = INT_MIN, idx;
-        // Iterate through front edges
-        e = V[i].f_hd;
+
+        /*
+         * For a better chance of lowering the SPT's total cost,
+         * find the vertex with the highest distance from `src`
+         * among the possible back-trace vertices from `u`.
+         */
+        max_dist = INT_MIN;
+        e = V[u].f_hd;
         while (e != NONE) {
-            if (V[i].distance == V[E[e].vr].distance + E[e].cost) {
-                if (V[E[e].vr].distance > max_cost) {
-                    max_cost = V[E[e].vr].distance;
-                    idx = e;
+            // Iterate through front edges (u, w)
+            const int& w = E[e].vr;
+            if (V[u].distance == V[w].distance + E[e].cost) {
+                if (V[w].distance > max_dist) {
+                    max_dist = V[w].distance;
+                    max_idx = e;
                 }
             }
             e = E[e].fp;
         }
-
-        // Iterate through rear edges
-        e = V[i].r_hd;
+        e = V[u].r_hd;
         while (e != NONE) {
-            if (V[i].distance == V[E[e].vf].distance + E[e].cost) {
-                if (V[E[e].vf].distance > max_cost) {
-                    max_cost = V[E[e].vf].distance;
-                    idx = e;
+            // Iterate through rear edges (u, w)
+            const int& w = E[e].vf;
+            if (V[u].distance == V[w].distance + E[e].cost) {
+                if (V[w].distance > max_dist) {
+                    max_dist = V[w].distance;
+                    max_idx = e;
                 }
             }
             e = E[e].rp;
         }
 
-        E[idx].flag = true;
-        treeCost += E[idx].cost;
+        // Include the edge in SPT and accumulate the cost
+        E[max_idx].flag = true;
+        cost += E[max_idx].cost;
     }
 
-    return treeCost;
+    return cost;
 }
 
 void Read_Graph(int Vnum, vertex* V, int Enum, edge* E) {
@@ -151,7 +263,7 @@ void Read_Graph(int Vnum, vertex* V, int Enum, edge* E) {
         V[i].inS = false;
     }
 
-    // Store the given graph as adjacent list in array
+    // Store the given graph as adjacent list and initializes
     for (int i = 0; i < Enum; i++) {
         scanf_s("%d%d%d", &u, &v, &c);
 
@@ -166,58 +278,6 @@ void Read_Graph(int Vnum, vertex* V, int Enum, edge* E) {
         V[u].f_hd = i;
         V[v].r_hd = i;
     }
-}
-
-static void minheap_insert(vertex* V, int* heap, int& last, const int x) {
-    int idx = ++last;
-    heap[idx] = x;
-    while (idx > 1 && V[heap[idx]].distance < V[heap[idx / 2]].distance) {
-        V[heap[idx / 2]].heap_idx = idx / 2;
-        std::swap(heap[idx], heap[idx / 2]);
-        idx /= 2;
-    }
-    V[heap[idx]].heap_idx = idx;
-}
-
-static int minheap_delete(vertex* V, int* heap, int& last) {
-    const int ret = heap[1];
-    int idx = 1, next;
-
-    V[ret].heap_idx = NONE;
-    heap[idx] = heap[last];
-    heap[last--] = NONE;
-
-    if (last == 0) {
-        return ret;
-    }
-
-    while (true) {
-        next = idx;
-        if (idx * 2 <= last && V[heap[idx * 2]].distance < V[heap[idx]].distance) {
-            next = idx * 2;
-        }
-        if (idx * 2 + 1 <= last && V[heap[idx * 2 + 1]].distance < V[heap[next]].distance) {
-            next = idx * 2 + 1;
-        }
-        if (next == idx) {
-            break;
-        }
-        V[heap[next]].heap_idx = next;
-        std::swap(heap[idx], heap[next]);
-        idx = next;
-    }
-    V[heap[idx]].heap_idx = idx;
-
-    return ret;
-}
-
-static void minheap_adjust(vertex* V, int* heap, const int& last, int idx) {
-    while (idx > 1 && V[heap[idx]].distance < V[heap[idx / 2]].distance) {
-        V[heap[idx / 2]].heap_idx = idx;
-        std::swap(heap[idx / 2], heap[idx]);
-        idx /= 2;
-    }
-    V[heap[idx]].heap_idx = idx;
 }
 
 // the following functions are for testing if the submitted program is correct.

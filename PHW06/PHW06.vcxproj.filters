@@ -23,5 +23,11 @@
     <Object Include="SPT_test_D.obj">
       <Filter>Resource Files</Filter>
     </Object>
+    <Object Include="SPT_test_R19.obj">
+      <Filter>Resource Files</Filter>
+    </Object>
+    <Object Include="SPT_test_R17.obj">
+      <Filter>Resource Files</Filter>
+    </Object>
   </ItemGroup>
 </Project>
